@@ -1509,6 +1509,8 @@ void Game::processKeyInput()
 	} else if (wasKeyPressed(KeyType::CAMERA_MODE)) {
 		camera->toggleCameraMode();
 		updateCameraMode();
+	} else if (wasKeyPressed(KeyType::SHOULDER_SWITCH)) {
+		camera->toggleShoulderSwitch();
 	} else if (wasKeyPressed(KeyType::TOGGLE_DEBUG)) {
 		toggleDebug();
 	} else if (wasKeyPressed(KeyType::TOGGLE_PROFILER)) {

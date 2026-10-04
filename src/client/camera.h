@@ -161,6 +161,9 @@ public:
 	// Toggle the current camera mode
 	void toggleCameraMode();
 
+	// Toggle third-person shoulder side (left/right) with smooth transition
+	void toggleShoulderSwitch();
+
 	// Set the current camera mode
 	inline void setCameraMode(CameraMode mode)
 	{
@@ -259,6 +262,12 @@ private:
 
 	std::vector<Nametag*> m_nametags;
 	bool m_show_nametag_backgrounds;
+
+	// Shoulder switch state (third-person left/right)
+	f32 m_shoulder_side = 1.0f; // 1.0 = right, -1.0 = left
+	f32 m_shoulder_target = 1.0f;
+	static constexpr f32 SHOULDER_OFFSET_X = 1.5f; // horizontal offset in BS units
+	static constexpr f32 SHOULDER_TRANSITION_SPEED = 8.0f; // lerp speed multiplier
 
 	// Last known light color of the player
 	video::SColor m_player_light_color;

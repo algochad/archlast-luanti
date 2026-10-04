@@ -71,8 +71,8 @@ void MyEventReceiver::reloadKeybindings()
 	keybindings[KeyType::TOGGLE_FOG] = getKeySetting("keymap_toggle_fog");
 	keybindings[KeyType::TOGGLE_UPDATE_CAMERA] = getKeySetting("keymap_toggle_update_camera");
 	keybindings[KeyType::TOGGLE_DEBUG] = getKeySetting("keymap_toggle_debug");
-	keybindings[KeyType::TOGGLE_PROFILER] = getKeySetting("keymap_toggle_profiler");
 	keybindings[KeyType::CAMERA_MODE] = getKeySetting("keymap_camera_mode");
+	keybindings[KeyType::SHOULDER_SWITCH] = getKeySetting("keymap_shoulder_switch");
 	keybindings[KeyType::INCREASE_VIEWING_RANGE] =
 			getKeySetting("keymap_increase_viewing_range_min");
 	keybindings[KeyType::DECREASE_VIEWING_RANGE] =

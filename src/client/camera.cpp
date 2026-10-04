@@ -200,6 +200,20 @@ void Camera::step(f32 dtime)
 			}
 		}
 	}
+
+	// Smooth shoulder switch transition (third-person only)
+	if (m_camera_mode > CAMERA_MODE_FIRST && m_shoulder_side != m_shoulder_target) {
+		f32 diff = m_shoulder_target - m_shoulder_side;
+		f32 step = SHOULDER_TRANSITION_SPEED * dtime;
+		if (std::fabs(diff) <= step)
+			m_shoulder_side = m_shoulder_target;
+		else
+			m_shoulder_side += (diff > 0 ? step : -step);
+	} else if (m_camera_mode <= CAMERA_MODE_FIRST) {
+		// Reset to right shoulder when leaving third-person
+		m_shoulder_side = 1.0f;
+		m_shoulder_target = 1.0f;
+	}
 }
 
 static inline v2f dir(const v2f &pos_dist)
@@ -450,6 +464,18 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		// update the camera position in third-person mode to render blocks behind player
 		// and correctly apply liquid post FX.
 		m_camera_position = my_cp;
+
+		// Apply shoulder side offset (perpendicular to look direction)
+		// Right vector = (-dir.Z, 0, dir.X) normalized
+		f32 right_x = -m_camera_direction.Z;
+		f32 right_z = m_camera_direction.X;
+		f32 len = std::sqrt(right_x * right_x + right_z * right_z);
+		if (len > 0.001f) {
+			right_x /= len;
+			right_z /= len;
+		}
+		m_camera_position.X += right_x * SHOULDER_OFFSET_X * BS * m_shoulder_side;
+		m_camera_position.Z += right_z * SHOULDER_OFFSET_X * BS * m_shoulder_side;
 	}
 
 	// Set camera node transformation
@@ -652,6 +678,14 @@ void Camera::toggleCameraMode()
 		m_camera_mode = CAMERA_MODE_THIRD_FRONT;
 	else
 		m_camera_mode = CAMERA_MODE_FIRST;
+}
+
+void Camera::toggleShoulderSwitch()
+{
+	// Only toggle in third-person modes
+	if (m_camera_mode <= CAMERA_MODE_FIRST)
+		return;
+	m_shoulder_target = -m_shoulder_target;
 }
 
 void Camera::drawNametags()
