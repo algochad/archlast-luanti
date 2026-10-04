@@ -376,9 +376,11 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			break;
 		case CAMERA_MODE_THIRD:
 			eye_offset += player->eye_offset_third;
+			// Apply shoulder side multiplier (smooth transition via m_shoulder_side)
+			eye_offset.X *= m_shoulder_side;
 			break;
 		case CAMERA_MODE_THIRD_FRONT:
-			eye_offset.X += player->eye_offset_third_front.X;
+			eye_offset.X += player->eye_offset_third_front.X * m_shoulder_side;
 			eye_offset.Y += player->eye_offset_third_front.Y;
 			eye_offset.Z -= player->eye_offset_third_front.Z;
 			break;
@@ -465,17 +467,6 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		// and correctly apply liquid post FX.
 		m_camera_position = my_cp;
 
-		// Apply shoulder side offset (perpendicular to look direction)
-		// Right vector = (-dir.Z, 0, dir.X) normalized
-		f32 right_x = -m_camera_direction.Z;
-		f32 right_z = m_camera_direction.X;
-		f32 len = std::sqrt(right_x * right_x + right_z * right_z);
-		if (len > 0.001f) {
-			right_x /= len;
-			right_z /= len;
-		}
-		m_camera_position.X += right_x * SHOULDER_OFFSET_X * BS * m_shoulder_side;
-		m_camera_position.Z += right_z * SHOULDER_OFFSET_X * BS * m_shoulder_side;
 	}
 
 	// Set camera node transformation
