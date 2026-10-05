@@ -214,6 +214,16 @@ void Camera::step(f32 dtime)
 		m_shoulder_side = 1.0f;
 		m_shoulder_target = 1.0f;
 	}
+
+	// Smooth camera mode transition (zoom in/out on C toggle)
+	if (m_mode_blend != m_mode_blend_target) {
+		f32 diff = m_mode_blend_target - m_mode_blend;
+		f32 mstep = MODE_TRANSITION_SPEED * dtime;
+		if (std::fabs(diff) <= mstep)
+			m_mode_blend = m_mode_blend_target;
+		else
+			m_mode_blend += (diff > 0 ? mstep : -mstep);
+	}
 }
 
 static inline v2f dir(const v2f &pos_dist)
@@ -436,9 +446,12 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 
 		my_cp.Y += 2;
 
-		// Calculate new position
+		// Calculate new position, scaled by the mode-blend factor so the
+		// C toggle zooms smoothly instead of snapping. easeCurve gives
+		// a fast-start gentle-landing feel.
+		f32 pullback = easeCurve(m_mode_blend);
 		bool abort = false;
-		for (int i = BS; i <= BS * 2.75; i++) {
+		for (int i = BS; i <= BS * 2.75 * pullback; i++) {
 			my_cp.X = m_camera_position.X + m_camera_direction.X * -i;
 			my_cp.Z = m_camera_position.Z + m_camera_direction.Z * -i;
 			if (i > 12)
@@ -465,7 +478,9 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 
 		// update the camera position in third-person mode to render blocks behind player
 		// and correctly apply liquid post FX.
-		m_camera_position = my_cp;
+		// Blend toward the head position while transitioning so the first
+		// frames of the zoom start at the eyes, not snapped to full pullback.
+		m_camera_position = m_camera_position * (1.0f - pullback) + my_cp * pullback;
 
 	}
 
@@ -663,12 +678,30 @@ void Camera::drawWieldedTool(core::matrix4* translation)
 
 void Camera::toggleCameraMode()
 {
-	if (m_camera_mode == CAMERA_MODE_FIRST)
+	// Advance through First -> Third -> ThirdFront -> First, but keep the
+	// logical mode applied immediately (gameplay: shootline, CAO visibility)
+	// while the visual pullback lerps via m_mode_blend in step()/update().
+	if (m_camera_mode == CAMERA_MODE_FIRST) {
 		m_camera_mode = CAMERA_MODE_THIRD;
-	else if (m_camera_mode == CAMERA_MODE_THIRD)
+		m_mode_blend_target = 1.0f;
+	} else if (m_camera_mode == CAMERA_MODE_THIRD) {
 		m_camera_mode = CAMERA_MODE_THIRD_FRONT;
-	else
+		m_mode_blend_target = 1.0f;
+	} else {
 		m_camera_mode = CAMERA_MODE_FIRST;
+		m_mode_blend_target = 0.0f;
+	}
+}
+
+void Camera::setCameraMode(CameraMode mode)
+{
+	m_camera_mode = mode;
+	// External mode changes (server-forced, Lua) snap the blend so
+	// the camera never lerps from a stale pullback distance.
+	// (Out-of-line: CameraMode enumerators are only declared, not
+	// defined, in camera.h.)
+	m_mode_blend = m_mode_blend_target =
+		(mode > CAMERA_MODE_FIRST) ? 1.0f : 0.0f;
 }
 
 void Camera::toggleShoulderSwitch()
