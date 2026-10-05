@@ -481,6 +481,12 @@ void Server::process_PlayerPos(RemotePlayer *player, PlayerSAO *playersao,
 		player->control.movement_speed = std::clamp(movement_speed, 0.0f, 1.0f);
 		*pkt >> player->control.movement_direction;
 		have_movement_data = true;
+		if (!pkt->hasRemainingBytes())
+			break;
+		// >= archlast
+		u8 camera_mode;
+		*pkt >> camera_mode;
+		player->control.camera_mode = camera_mode;
 	} while (0);
 
 	if (!have_movement_data) {

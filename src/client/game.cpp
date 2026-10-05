@@ -2071,6 +2071,7 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		cam.camera_pitch,
 		cam.camera_yaw
 	);
+	control.camera_mode = static_cast<u8>(camera->getCameraMode());
 	control.setMovementFromKeys();
 
 	// autoforward if set: move at maximum speed
@@ -2965,7 +2966,22 @@ void Game::handlePointingAtNode(const PointedThing &pointed,
 		}
 	}
 
-	if ((wasKeyPressed(KeyType::PLACE) ||
+	// Suppress placement if offhand has a shield (blocking takes priority)
+	bool offhand_has_shield = false;
+	{
+		LocalPlayer *lp = client->getEnv().getLocalPlayer();
+		if (lp) {
+			const InventoryList *offhand_list = lp->inventory.getList("offhand");
+			if (offhand_list && offhand_list->getSize() > 0) {
+				const ItemStack &offhand_item = offhand_list->getItem(0);
+				if (itemdef_manager->get(offhand_item.name).groups.count("shield")) {
+					offhand_has_shield = true;
+				}
+			}
+		}
+	}
+
+	if (!offhand_has_shield && (wasKeyPressed(KeyType::PLACE) ||
 			runData.repeat_place_timer >= m_repeat_place_time) &&
 			client->checkPrivilege("interact")) {
 		runData.repeat_place_timer = 0;

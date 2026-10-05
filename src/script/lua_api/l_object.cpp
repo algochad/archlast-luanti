@@ -1808,7 +1808,7 @@ int ObjectRef::l_get_player_control(lua_State *L)
 	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
 	RemotePlayer *player = getplayer(ref);
 
-	lua_createtable(L, 0, 12);
+	lua_createtable(L, 0, 13);
 	if (player == nullptr)
 		return 1;
 
@@ -1845,6 +1845,8 @@ int ObjectRef::l_get_player_control(lua_State *L)
 	lua_setfield(L, -2, "RMB");
 	lua_pushboolean(L, control.zoom);
 	lua_setfield(L, -2, "zoom");
+	lua_pushinteger(L, control.camera_mode);
+	lua_setfield(L, -2, "camera_mode");
 	return 1;
 }
 

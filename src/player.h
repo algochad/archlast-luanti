@@ -90,11 +90,13 @@ struct PlayerControl
 	bool zoom = false;
 	bool dig = false;
 	bool place = false;
+	u8 camera_mode = 0; // 0=first, 1=third, 2=third_front
 	// Note: These two are NOT available on the server
 	float pitch = 0.0f;
 	float yaw = 0.0f;
 	float movement_speed = 0.0f;
 	float movement_direction = 0.0f;
+	// Note: pitch/yaw NOT available on server; camera_mode IS available
 };
 
 struct PlayerPhysicsOverride

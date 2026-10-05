@@ -1094,6 +1094,7 @@ void writePlayerPos(LocalPlayer *myplayer, ClientMap *clientMap, NetworkPacket *
 			std::ceil(clientMap->getWantedRange() * (1.0f / MAP_BLOCKSIZE)));
 	f32 movement_speed = myplayer->control.movement_speed;
 	f32 movement_dir = myplayer->control.movement_direction;
+	u8 camera_mode = myplayer->control.camera_mode;
 
 	/*
 		Format:
@@ -1107,11 +1108,13 @@ void writePlayerPos(LocalPlayer *myplayer, ClientMap *clientMap, NetworkPacket *
 		[12+12+4+4+4+1+1] u8 camera_inverted (bool)
 		[12+12+4+4+4+1+1+1] f32 movement_speed
 		[12+12+4+4+4+1+1+1+4] f32 movement_direction
+		[12+12+4+4+4+1+1+1+4+4] u8 camera_mode
 	*/
 	*pkt << position << speed << pitch << yaw << keyPressed;
 	*pkt << fov << wanted_range;
 	*pkt << camera_inverted;
 	*pkt << movement_speed << movement_dir;
+	*pkt << camera_mode;
 }
 
 void Client::interact(InteractAction action, const PointedThing& pointed)

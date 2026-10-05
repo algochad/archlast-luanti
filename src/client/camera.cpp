@@ -410,8 +410,7 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	v3f rel_cam_target = v3f(0,0,1);
 	v3f rel_cam_up = v3f(0,1,0);
 
-	if (m_cache_view_bobbing_amount != 0.0f && m_view_bobbing_anim != 0.0f &&
-		m_camera_mode < CAMERA_MODE_THIRD) {
+	if (m_cache_view_bobbing_amount != 0.0f && m_view_bobbing_anim != 0.0f) {
 		f32 bobfrac = my_modf(m_view_bobbing_anim * 2);
 		f32 bobdir = (m_view_bobbing_anim < 0.5) ? 1.0 : -1.0;
 
