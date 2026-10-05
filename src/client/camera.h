@@ -261,15 +261,20 @@ private:
 	bool m_show_nametag_backgrounds;
 
 	// Shoulder switch state (third-person left/right)
-	f32 m_shoulder_side = 1.0f; // 1.0 = right, -1.0 = left
-	f32 m_shoulder_target = 1.0f;
-	static constexpr f32 SHOULDER_TRANSITION_SPEED = 8.0f; // lerp speed multiplier
+	// Progress-based eased transition: m_shoulder_t goes 0->1 over
+	// SHOULDER_DURATION, eased with smootherstep at apply time.
+	f32 m_shoulder_from = 1.0f; // side at transition start
+	f32 m_shoulder_target = 1.0f; // 1.0 = right, -1.0 = left
+	f32 m_shoulder_t = 1.0f; // 1.0 = settled
+	static constexpr f32 SHOULDER_DURATION = 0.25f; // seconds, unchanged
 
 	// Camera mode transition state (smooth zoom in/out on C toggle)
-	// 0.0 = first-person, 1.0 = full third-person pullback
-	f32 m_mode_blend = 0.0f;
-	f32 m_mode_blend_target = 0.0f;
-	static constexpr f32 MODE_TRANSITION_SPEED = 4.0f; // lerp speed multiplier
+	// Same pattern: m_mode_t goes 0->1 over MODE_DURATION.
+	f32 m_mode_from = 0.0f; // blend at transition start
+	f32 m_mode_blend_target = 0.0f; // 0.0 = first-person, 1.0 = third-person
+	f32 m_mode_t = 1.0f; // 1.0 = settled
+	f32 m_mode_blend = 0.0f; // eased value actually applied
+	static constexpr f32 MODE_DURATION = 0.25f; // seconds, unchanged
 
 	// Last known light color of the player
 	video::SColor m_player_light_color;

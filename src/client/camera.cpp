@@ -201,28 +201,25 @@ void Camera::step(f32 dtime)
 		}
 	}
 
-	// Smooth shoulder switch transition (third-person only)
-	if (m_camera_mode > CAMERA_MODE_FIRST && m_shoulder_side != m_shoulder_target) {
-		f32 diff = m_shoulder_target - m_shoulder_side;
-		f32 step = SHOULDER_TRANSITION_SPEED * dtime;
-		if (std::fabs(diff) <= step)
-			m_shoulder_side = m_shoulder_target;
-		else
-			m_shoulder_side += (diff > 0 ? step : -step);
+	// Eased shoulder switch transition (third-person only).
+	// Progress timer eased with smootherstep at apply time: same 0.25s
+	// duration, but velocity eases out of AND into the endpoints instead
+	// of slamming to a stop (linear lerp = constant speed, hard stop).
+	if (m_camera_mode > CAMERA_MODE_FIRST && m_shoulder_t < 1.0f) {
+		m_shoulder_t = MYMIN(m_shoulder_t + dtime / SHOULDER_DURATION, 1.0f);
 	} else if (m_camera_mode <= CAMERA_MODE_FIRST) {
 		// Reset to right shoulder when leaving third-person
-		m_shoulder_side = 1.0f;
+		m_shoulder_from = 1.0f;
 		m_shoulder_target = 1.0f;
+		m_shoulder_t = 1.0f;
 	}
 
-	// Smooth camera mode transition (zoom in/out on C toggle)
-	if (m_mode_blend != m_mode_blend_target) {
-		f32 diff = m_mode_blend_target - m_mode_blend;
-		f32 mstep = MODE_TRANSITION_SPEED * dtime;
-		if (std::fabs(diff) <= mstep)
-			m_mode_blend = m_mode_blend_target;
-		else
-			m_mode_blend += (diff > 0 ? mstep : -mstep);
+	// Eased camera mode transition (zoom in/out on C toggle). Same
+	// treatment: identical duration, smooth arrival.
+	if (m_mode_t < 1.0f) {
+		m_mode_t = MYMIN(m_mode_t + dtime / MODE_DURATION, 1.0f);
+		m_mode_blend = m_mode_from +
+			(m_mode_blend_target - m_mode_from) * easeCurve(m_mode_t);
 	}
 }
 
@@ -376,6 +373,10 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	// Calculate and translate the head SceneNode offsets
 	{
 		v3f eye_offset = player->getEyeOffset();
+		// Eased shoulder side (smootherstep: gentle at both ends).
+		// Computed before the switch: case labels cannot cross inits.
+		f32 eased_shoulder = m_shoulder_from +
+			(m_shoulder_target - m_shoulder_from) * easeCurve(m_shoulder_t);
 		switch(m_camera_mode) {
 		case CAMERA_MODE_ANY:
 		case CameraMode_END:
@@ -386,11 +387,10 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			break;
 		case CAMERA_MODE_THIRD:
 			eye_offset += player->eye_offset_third;
-			// Apply shoulder side multiplier (smooth transition via m_shoulder_side)
-			eye_offset.X *= m_shoulder_side;
+			eye_offset.X *= eased_shoulder;
 			break;
 		case CAMERA_MODE_THIRD_FRONT:
-			eye_offset.X += player->eye_offset_third_front.X * m_shoulder_side;
+			eye_offset.X += player->eye_offset_third_front.X * eased_shoulder;
 			eye_offset.Y += player->eye_offset_third_front.Y;
 			eye_offset.Z -= player->eye_offset_third_front.Z;
 			break;
@@ -446,10 +446,10 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 
 		my_cp.Y += 2;
 
-		// Calculate new position, scaled by the mode-blend factor so the
-		// C toggle zooms smoothly instead of snapping. easeCurve gives
-		// a fast-start gentle-landing feel.
-		f32 pullback = easeCurve(m_mode_blend);
+		// Calculate new position, scaled by the eased mode blend so the
+		// C toggle zooms smoothly instead of snapping. m_mode_blend is
+		// already eased in step(); do NOT ease twice.
+		f32 pullback = m_mode_blend;
 		bool abort = false;
 		for (int i = BS; i <= BS * 2.75 * pullback; i++) {
 			my_cp.X = m_camera_position.X + m_camera_direction.X * -i;
@@ -680,7 +680,9 @@ void Camera::toggleCameraMode()
 {
 	// Advance through First -> Third -> ThirdFront -> First, but keep the
 	// logical mode applied immediately (gameplay: shootline, CAO visibility)
-	// while the visual pullback lerps via m_mode_blend in step()/update().
+	// while the visual pullback eases via m_mode_t in step()/update().
+	// Restart from the CURRENT eased position so rapid re-presses reverse
+	// smoothly instead of jumping.
 	if (m_camera_mode == CAMERA_MODE_FIRST) {
 		m_camera_mode = CAMERA_MODE_THIRD;
 		m_mode_blend_target = 1.0f;
@@ -691,6 +693,8 @@ void Camera::toggleCameraMode()
 		m_camera_mode = CAMERA_MODE_FIRST;
 		m_mode_blend_target = 0.0f;
 	}
+	m_mode_from = m_mode_blend;
+	m_mode_t = 0.0f;
 }
 
 void Camera::setCameraMode(CameraMode mode)
@@ -700,8 +704,9 @@ void Camera::setCameraMode(CameraMode mode)
 	// the camera never lerps from a stale pullback distance.
 	// (Out-of-line: CameraMode enumerators are only declared, not
 	// defined, in camera.h.)
-	m_mode_blend = m_mode_blend_target =
+	m_mode_from = m_mode_blend = m_mode_blend_target =
 		(mode > CAMERA_MODE_FIRST) ? 1.0f : 0.0f;
+	m_mode_t = 1.0f;
 }
 
 void Camera::toggleShoulderSwitch()
@@ -709,7 +714,12 @@ void Camera::toggleShoulderSwitch()
 	// Only toggle in third-person modes
 	if (m_camera_mode <= CAMERA_MODE_FIRST)
 		return;
+	// Restart the eased transition from the CURRENT eased position so
+	// rapid re-presses reverse smoothly instead of jumping.
+	m_shoulder_from = m_shoulder_from +
+		(m_shoulder_target - m_shoulder_from) * easeCurve(m_shoulder_t);
 	m_shoulder_target = -m_shoulder_target;
+	m_shoulder_t = 0.0f;
 }
 
 void Camera::drawNametags()
